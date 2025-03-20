@@ -12,6 +12,7 @@ st.set_page_config(
 
 # API Configuration
 BLINK_API_URL = "https://api.blink.sv/graphql"
+WALLET_ID = "0515bb4d-9064-46ba-885a-306e3324c547"
 
 # Get API key from environment variable or use the default key
 api_key = os.getenv("BLINK_API_KEY")
@@ -25,7 +26,9 @@ transport = RequestsHTTPTransport(
     headers={
         'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json',
-    }
+    },
+    verify=True,
+    retries=3,
 )
 
 client = Client(
@@ -36,13 +39,11 @@ client = Client(
 # GraphQL query for wallet balance
 balance_query = gql("""
     query {
-        me {
-            wallet {
-                balance
-            }
+        wallet(id: "%s") {
+            balance
         }
     }
-""")
+""" % WALLET_ID)
 
 def fetch_balance():
     """Fetch wallet balance from Blink API"""
@@ -50,12 +51,14 @@ def fetch_balance():
         st.sidebar.info("Fetching balance from Blink API...")
         result = client.execute(balance_query)
         st.sidebar.success("Successfully fetched balance")
-        return result['me']['wallet']['balance']
+        return result['wallet']['balance']
     except Exception as e:
         error_msg = str(e)
         st.sidebar.error(f"Error details: {error_msg}")
         if "401" in error_msg:
             st.error("Authentication failed. Please check your API key.")
+        elif "404" in error_msg:
+            st.error("Wallet not found. Please check the wallet ID.")
         elif "Network" in error_msg:
             st.error("Network error. Please check your internet connection.")
         else:
