@@ -11,16 +11,21 @@ st.set_page_config(
 )
 
 # API Configuration
-BLINK_API_URL = "https://api.staging.blink.sv/graphql"
-BLINK_API_KEY = os.getenv(
-    "BLINK_API_KEY",
-    "blink_OEXpNxtsd1UMLxVH47N2IAZeqlyWPKtjCv4Prx0MC58ebfToa9XybFmZlJ2ZjVtR"
-)
+BLINK_API_URL = "https://api.blink.sv/graphql"
 
-# Setup GraphQL client
+# Get API key from environment variable or use the default key
+api_key = os.getenv("BLINK_API_KEY")
+if not api_key:
+    st.error("API key not found. Please set the BLINK_API_KEY environment variable.")
+    st.stop()
+
+# Setup GraphQL client with proper headers
 transport = RequestsHTTPTransport(
     url=BLINK_API_URL,
-    headers={'Authorization': f'Bearer {BLINK_API_KEY}'}
+    headers={
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+    }
 )
 
 client = Client(
@@ -42,28 +47,49 @@ balance_query = gql("""
 def fetch_balance():
     """Fetch wallet balance from Blink API"""
     try:
+        st.sidebar.info("Fetching balance from Blink API...")
         result = client.execute(balance_query)
+        st.sidebar.success("Successfully fetched balance")
         return result['me']['wallet']['balance']
     except Exception as e:
-        st.error(f"Error fetching balance: {str(e)}")
+        error_msg = str(e)
+        st.sidebar.error(f"Error details: {error_msg}")
+        if "401" in error_msg:
+            st.error("Authentication failed. Please check your API key.")
+        elif "Network" in error_msg:
+            st.error("Network error. Please check your internet connection.")
+        else:
+            st.error(f"Error fetching balance: {error_msg}")
         return None
 
 # Main app layout
 st.title("BTC Wallet Balance")
+
+# Add API status indicator
+st.sidebar.markdown("### API Status")
+api_status = st.sidebar.empty()
 
 # Create a placeholder for the balance
 balance_placeholder = st.empty()
 
 # Main loop for automatic refresh
 while True:
-    balance = fetch_balance()
-    
-    if balance is not None:
-        balance_placeholder.metric(
-            label="Current Balance",
-            value=f"{balance} BTC"
-        )
-    
-    # Wait for 2 minutes before next refresh
-    time.sleep(120)
-    st.rerun()
+    try:
+        balance = fetch_balance()
+
+        if balance is not None:
+            api_status.success("Connected to Blink API")
+            balance_placeholder.metric(
+                label="Current Balance",
+                value=f"{balance} BTC"
+            )
+        else:
+            api_status.error("Failed to connect to Blink API")
+
+        # Wait for 2 minutes before next refresh
+        time.sleep(120)
+        st.rerun()
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {str(e)}")
+        time.sleep(120)
+        st.rerun()
