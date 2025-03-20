@@ -37,18 +37,23 @@ client = Client(
 
 # GraphQL query for wallet balance
 balance_query = gql("""
-    query {
+    query Me {
         me {
             defaultAccount {
                 wallets {
                     id
+                    walletCurrency
                     balance
-                    currency
                 }
             }
         }
     }
 """)
+
+def format_btc_balance(satoshis):
+    """Convert satoshis to BTC with proper formatting"""
+    btc_value = satoshis / 100000000  # Convert satoshis to BTC
+    return f"{btc_value:.8f}"  # Display with 8 decimal places
 
 def fetch_balance():
     """Fetch wallet balance from Blink API"""
@@ -61,7 +66,7 @@ def fetch_balance():
         wallets = result['me']['defaultAccount']['wallets']
 
         # Find the BTC wallet
-        btc_wallet = next((wallet for wallet in wallets if wallet['currency'] == 'BTC'), None)
+        btc_wallet = next((wallet for wallet in wallets if wallet['walletCurrency'] == 'BTC'), None)
 
         if btc_wallet:
             return btc_wallet['balance']
@@ -101,7 +106,8 @@ while True:
             api_status.success("Connected to Blink API")
             balance_placeholder.metric(
                 label="Current Balance",
-                value=f"{balance} BTC"
+                value=f"{format_btc_balance(balance)} BTC",
+                help="Balance shown in BTC (fetched in satoshis)"
             )
         else:
             api_status.error("Failed to connect to Blink API")
