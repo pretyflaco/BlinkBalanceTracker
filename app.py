@@ -50,7 +50,8 @@ if st.session_state.api_keys:
         if st.button("🗑️", key=f"remove_{selected_account}"):
             if selected_account in st.session_state.api_keys:
                 del st.session_state.api_keys[selected_account]
-                st.success(f"Removed account: {selected_account}")
+                # Move success message outside the button column
+                st.sidebar.success(f"Removed account: {selected_account}")
                 st.rerun()
 
     st.session_state.selected_account = selected_account
