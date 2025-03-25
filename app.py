@@ -129,8 +129,18 @@ if st.session_state.api_keys:
 
     def format_date(date_str):
         """Format date string to a readable format"""
-        date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-        return date.strftime("%b %d, %Y %I:%M %p")
+        try:
+            # Try parsing as ISO format string
+            if isinstance(date_str, str):
+                date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            else:
+                # Handle timestamp
+                date = datetime.fromtimestamp(date_str)
+
+            return date.strftime("%b %d, %Y %I:%M %p")
+        except Exception as e:
+            # If date parsing fails, return original value
+            return str(date_str)
 
     def fetch_balance():
         """Fetch wallet balance from Blink API"""
@@ -215,7 +225,7 @@ if st.session_state.api_keys:
                         transaction = tx['node']
                         amount = format_btc_balance(transaction['settlementAmount'])
                         direction = transaction['direction'].capitalize()
-                        sign = '+' if direction == 'Receive' else '-'
+                        sign = '+' if direction == 'RECEIVE' else '-'
 
                         transactions_data.append({
                             "Date": format_date(transaction['createdAt']),
