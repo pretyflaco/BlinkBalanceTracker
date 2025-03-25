@@ -28,16 +28,14 @@ if 'selected_account' not in st.session_state:
 st.sidebar.title("Account Management")
 
 # Add new API key
-with st.sidebar.expander("Add New Account"):
-    new_account_name = st.text_input("Account Name", key="new_account_name")
-    new_api_key = st.text_input("API Key", type="password", key="new_api_key")
-    if st.button("Add Account"):
+with st.sidebar.form("add_account_form"):
+    new_account_name = st.text_input("Account Name")
+    new_api_key = st.text_input("API Key", type="password")
+    submit_button = st.form_submit_button("Add Account")
+    if submit_button:
         if new_account_name and new_api_key:
             st.session_state.api_keys[new_account_name] = new_api_key
             st.success(f"Added account: {new_account_name}")
-            # Clear input fields
-            st.session_state.new_account_name = ""
-            st.session_state.new_api_key = ""
         else:
             st.error("Please enter both account name and API key")
 
