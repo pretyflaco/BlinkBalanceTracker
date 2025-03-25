@@ -98,7 +98,7 @@ if st.session_state.api_keys:
         query Me {
             me {
                 defaultAccount {
-                    transactions(first: 5) {
+                    transactions(first: 50) {
                         edges {
                             node {
                                 id
@@ -229,7 +229,7 @@ if st.session_state.api_keys:
                 transactions = fetch_transactions()
 
                 if transactions and len(transactions) > 0:
-                    # Create a table for transactions
+                    # Create a list for all transactions
                     transactions_data = []
                     for tx in transactions:
                         transaction = tx['node']
@@ -240,7 +240,12 @@ if st.session_state.api_keys:
                             transaction['settlementCurrency']
                         )
 
+                        # Parse the date
+                        date = datetime.fromisoformat(transaction['createdAt'].replace('Z', '+00:00'))
+                        month_year = date.strftime("%B %Y")  # e.g., "March 2024"
+
                         transactions_data.append({
+                            "Month": month_year,
                             "Date": format_date(transaction['createdAt']),
                             "Type": direction,
                             "Amount": f"{sign}{formatted_amount}",
@@ -248,19 +253,32 @@ if st.session_state.api_keys:
                             "Memo": transaction['memo'] or '-'
                         })
 
-                    # Display transactions using a dataframe with custom styling
+                    # Convert to DataFrame and sort by date
                     df = pd.DataFrame(transactions_data)
-                    st.dataframe(
-                        df,
-                        hide_index=True,
-                        column_config={
-                            "Date": st.column_config.TextColumn("Date", width="medium"),
-                            "Type": st.column_config.TextColumn("Type", width="small"),
-                            "Amount": st.column_config.TextColumn("Amount", width="medium"),
-                            "Status": st.column_config.TextColumn("Status", width="small"),
-                            "Memo": st.column_config.TextColumn("Memo", width="large"),
-                        }
-                    )
+
+                    # Group transactions by month
+                    months = df['Month'].unique()
+
+                    for month in sorted(months, key=lambda x: datetime.strptime(x, "%B %Y"), reverse=True):
+                        # Create an expander for each month
+                        with st.expander(f"📅 {month}"):
+                            # Filter transactions for this month
+                            month_df = df[df['Month'] == month].copy()
+                            # Drop the Month column for display
+                            month_df = month_df.drop('Month', axis=1)
+
+                            # Display transactions for this month
+                            st.dataframe(
+                                month_df,
+                                hide_index=True,
+                                column_config={
+                                    "Date": st.column_config.TextColumn("Date", width="medium"),
+                                    "Type": st.column_config.TextColumn("Type", width="small"),
+                                    "Amount": st.column_config.TextColumn("Amount", width="medium"),
+                                    "Status": st.column_config.TextColumn("Status", width="small"),
+                                    "Memo": st.column_config.TextColumn("Memo", width="large"),
+                                }
+                            )
                 else:
                     st.info("No recent transactions found")
 
