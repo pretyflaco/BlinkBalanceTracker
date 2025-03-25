@@ -32,16 +32,27 @@ with st.sidebar.form("add_account_form"):
         if new_account_name and new_api_key:
             st.session_state.api_keys[new_account_name] = new_api_key
             st.success(f"Added account: {new_account_name}")
+            # Reset form by triggering a rerun
+            st.rerun()
         else:
             st.error("Please enter both account name and API key")
 
 # Select account to display
 if st.session_state.api_keys:
-    selected_account = st.sidebar.selectbox(
-        "Select Account",
-        options=list(st.session_state.api_keys.keys()),
-        key="account_selector"
-    )
+    col1, col2 = st.sidebar.columns([3, 1])
+    with col1:
+        selected_account = st.selectbox(
+            "Select Account",
+            options=list(st.session_state.api_keys.keys()),
+            key="account_selector"
+        )
+    with col2:
+        if st.button("🗑️", key=f"remove_{selected_account}"):
+            if selected_account in st.session_state.api_keys:
+                del st.session_state.api_keys[selected_account]
+                st.success(f"Removed account: {selected_account}")
+                st.rerun()
+
     st.session_state.selected_account = selected_account
     current_api_key = st.session_state.api_keys[selected_account]
 
