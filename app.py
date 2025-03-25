@@ -13,17 +13,52 @@ st.set_page_config(
 # API Configuration
 BLINK_API_URL = "https://api.blink.sv/graphql"
 
-# Get API key from environment variable or use the default key
-api_key = os.getenv("BLINK_API_KEY")
-if not api_key:
-    st.error("API key not found. Please set the BLINK_API_KEY environment variable.")
+# Initialize session state for API keys
+if 'api_keys' not in st.session_state:
+    st.session_state.api_keys = {}
+    # Add the default API key from environment if available
+    default_key = os.getenv("BLINK_API_KEY")
+    if default_key:
+        st.session_state.api_keys["Default Account"] = default_key
+
+if 'selected_account' not in st.session_state:
+    st.session_state.selected_account = "Default Account"
+
+# Sidebar for account management
+st.sidebar.title("Account Management")
+
+# Add new API key
+with st.sidebar.expander("Add New Account"):
+    new_account_name = st.text_input("Account Name", key="new_account_name")
+    new_api_key = st.text_input("API Key", type="password", key="new_api_key")
+    if st.button("Add Account"):
+        if new_account_name and new_api_key:
+            st.session_state.api_keys[new_account_name] = new_api_key
+            st.success(f"Added account: {new_account_name}")
+            # Clear input fields
+            st.session_state.new_account_name = ""
+            st.session_state.new_api_key = ""
+        else:
+            st.error("Please enter both account name and API key")
+
+# Select account to display
+if st.session_state.api_keys:
+    selected_account = st.sidebar.selectbox(
+        "Select Account",
+        options=list(st.session_state.api_keys.keys()),
+        key="account_selector"
+    )
+    st.session_state.selected_account = selected_account
+    current_api_key = st.session_state.api_keys[selected_account]
+else:
+    st.error("No API keys available. Please add an account.")
     st.stop()
 
 # Setup GraphQL client with proper headers
 transport = RequestsHTTPTransport(
     url=BLINK_API_URL,
     headers={
-        'X-API-KEY': api_key,
+        'X-API-KEY': current_api_key,
         'Content-Type': 'application/json',
     },
     verify=True,
@@ -93,7 +128,7 @@ def fetch_balance():
         return None
 
 # Main app layout
-st.title("Wallet Balances")
+st.title(f"Wallet Balances - {st.session_state.selected_account}")
 
 # Add API status indicator
 st.sidebar.markdown("### API Status")
