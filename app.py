@@ -93,12 +93,16 @@ if st.session_state.api_keys:
         }
     """)
 
-    # GraphQL query for recent transactions
+    # GraphQL query for recent transactions with pagination
     transactions_query = gql("""
-        query Me {
+        query transactionsForAccount($first: Int, $after: String) {
             me {
                 defaultAccount {
-                    transactions {
+                    transactions(first: $first, after: $after) {
+                        pageInfo {
+                            endCursor
+                            hasNextPage
+                        }
                         edges {
                             node {
                                 id
@@ -184,12 +188,31 @@ if st.session_state.api_keys:
                 st.error(f"Error fetching balance: {error_msg}")
             return None
 
-    def fetch_transactions():
-        """Fetch recent transactions from Blink API"""
+    def fetch_all_transactions():
+        """Fetch all transactions using pagination"""
         try:
-            result = client.execute(transactions_query)
-            transactions = result['me']['defaultAccount']['transactions']['edges']
-            return transactions
+            all_transactions = []
+            has_next_page = True
+            after_cursor = None
+            page_size = 100  # Number of transactions per page
+
+            with st.spinner('Fetching transaction history...'):
+                while has_next_page:
+                    variables = {
+                        "first": page_size,
+                        "after": after_cursor
+                    }
+
+                    result = client.execute(transactions_query, variable_values=variables)
+                    page_info = result['me']['defaultAccount']['transactions']['pageInfo']
+                    transactions = result['me']['defaultAccount']['transactions']['edges']
+
+                    all_transactions.extend(transactions)
+
+                    has_next_page = page_info['hasNextPage']
+                    after_cursor = page_info['endCursor']
+
+            return all_transactions
         except Exception as e:
             st.error(f"Error fetching transactions: {str(e)}")
             return None
@@ -226,7 +249,7 @@ if st.session_state.api_keys:
 
                 # Fetch and display transactions
                 st.markdown("### Recent Transactions")
-                transactions = fetch_transactions()
+                transactions = fetch_all_transactions()
 
                 if transactions and len(transactions) > 0:
                     # Create a list for all transactions
