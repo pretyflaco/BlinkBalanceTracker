@@ -242,7 +242,13 @@ if st.session_state.api_keys:
 
                         # Parse the date correctly from createdAt
                         try:
-                            date = datetime.fromisoformat(transaction['createdAt'].replace('Z', '+00:00'))
+                            if isinstance(transaction['createdAt'], int):
+                                # Handle timestamp (seconds since epoch)
+                                date = datetime.fromtimestamp(transaction['createdAt'])
+                            else:
+                                # Handle ISO format string
+                                date = datetime.fromisoformat(transaction['createdAt'].replace('Z', '+00:00'))
+
                             month_year = date.strftime("%B %Y")  # e.g., "March 2024"
                             formatted_date = date.strftime("%b %d, %Y %I:%M %p")
                         except Exception as e:
