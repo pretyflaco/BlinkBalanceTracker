@@ -98,7 +98,7 @@ if st.session_state.api_keys:
         query Me {
             me {
                 defaultAccount {
-                    transactions(first: 50) {
+                    transactions {
                         edges {
                             node {
                                 id
