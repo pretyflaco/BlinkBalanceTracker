@@ -142,6 +142,16 @@ if st.session_state.api_keys:
             # If date parsing fails, return original value
             return str(date_str)
 
+    def format_amount(amount, currency):
+        """Format amount based on currency"""
+        if currency == 'BTC':
+            value = amount / 100000000  # Convert satoshis to BTC
+            return f"{value:.8f} BTC"
+        elif currency == 'USD':
+            value = amount / 100  # Convert cents to USD
+            return f"${value:.2f}"
+        return str(amount)
+
     def fetch_balance():
         """Fetch wallet balance from Blink API"""
         try:
@@ -223,14 +233,17 @@ if st.session_state.api_keys:
                     transactions_data = []
                     for tx in transactions:
                         transaction = tx['node']
-                        amount = format_btc_balance(transaction['settlementAmount'])
                         direction = transaction['direction'].capitalize()
                         sign = '+' if direction == 'RECEIVE' else '-'
+                        formatted_amount = format_amount(
+                            transaction['settlementAmount'],
+                            transaction['settlementCurrency']
+                        )
 
                         transactions_data.append({
                             "Date": format_date(transaction['createdAt']),
                             "Type": direction,
-                            "Amount": f"{sign}{amount} BTC",
+                            "Amount": f"{sign}{formatted_amount}",
                             "Status": transaction['status'].capitalize(),
                             "Memo": transaction['memo'] or '-'
                         })
