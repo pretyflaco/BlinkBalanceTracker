@@ -240,13 +240,20 @@ if st.session_state.api_keys:
                             transaction['settlementCurrency']
                         )
 
-                        # Parse the date
-                        date = datetime.fromisoformat(transaction['createdAt'].replace('Z', '+00:00'))
-                        month_year = date.strftime("%B %Y")  # e.g., "March 2024"
+                        # Parse the date correctly from createdAt
+                        try:
+                            date = datetime.fromisoformat(transaction['createdAt'].replace('Z', '+00:00'))
+                            month_year = date.strftime("%B %Y")  # e.g., "March 2024"
+                            formatted_date = date.strftime("%b %d, %Y %I:%M %p")
+                        except Exception as e:
+                            # Fallback for any date parsing issues
+                            st.error(f"Error parsing date: {str(e)}")
+                            month_year = "Unknown Date"
+                            formatted_date = str(transaction['createdAt'])
 
                         transactions_data.append({
                             "Month": month_year,
-                            "Date": format_date(transaction['createdAt']),
+                            "Date": formatted_date,
                             "Type": direction,
                             "Amount": f"{sign}{formatted_amount}",
                             "Status": transaction['status'].capitalize(),
@@ -259,7 +266,7 @@ if st.session_state.api_keys:
                     # Group transactions by month
                     months = df['Month'].unique()
 
-                    for month in sorted(months, key=lambda x: datetime.strptime(x, "%B %Y"), reverse=True):
+                    for month in sorted(months, key=lambda x: datetime.strptime(x, "%B %Y") if x != "Unknown Date" else datetime.min, reverse=True):
                         # Create an expander for each month
                         with st.expander(f"📅 {month}"):
                             # Filter transactions for this month
