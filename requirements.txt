@@ -1,0 +1,5 @@
+
+gql>=3.5.2
+pandas>=2.2.3
+requests-toolbelt>=1.0.0
+streamlit>=1.43.2
