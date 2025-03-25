@@ -55,6 +55,11 @@ def format_btc_balance(satoshis):
     btc_value = satoshis / 100000000  # Convert satoshis to BTC
     return f"{btc_value:.8f}"  # Display with 8 decimal places
 
+def format_usd_balance(cents):
+    """Convert cents to USD with proper formatting"""
+    usd_value = cents / 100  # Convert cents to dollars
+    return f"${usd_value:.2f}"  # Display with 2 decimal places and dollar sign
+
 def fetch_balance():
     """Fetch wallet balance from Blink API"""
     try:
@@ -65,14 +70,14 @@ def fetch_balance():
         # Get all wallets from the default account
         wallets = result['me']['defaultAccount']['wallets']
 
-        # Find the BTC wallet
+        # Find the BTC and USD wallets
         btc_wallet = next((wallet for wallet in wallets if wallet['walletCurrency'] == 'BTC'), None)
+        usd_wallet = next((wallet for wallet in wallets if wallet['walletCurrency'] == 'USD'), None)
 
-        if btc_wallet:
-            return btc_wallet['balance']
-        else:
-            st.error("BTC wallet not found in the account")
-            return None
+        return {
+            'btc': btc_wallet['balance'] if btc_wallet else None,
+            'usd': usd_wallet['balance'] if usd_wallet else None
+        }
 
     except Exception as e:
         error_msg = str(e)
@@ -88,26 +93,36 @@ def fetch_balance():
         return None
 
 # Main app layout
-st.title("BTC Wallet Balance")
+st.title("Wallet Balances")
 
 # Add API status indicator
 st.sidebar.markdown("### API Status")
 api_status = st.sidebar.empty()
 
-# Create a placeholder for the balance
-balance_placeholder = st.empty()
+# Create placeholders for the balances
+btc_balance_placeholder = st.empty()
+usd_balance_placeholder = st.empty()
 
 # Main loop for automatic refresh
 while True:
     try:
-        balance = fetch_balance()
+        balances = fetch_balance()
 
-        if balance is not None:
+        if balances is not None:
             api_status.success("Connected to Blink API")
-            balance_placeholder.metric(
-                label="Current Balance",
-                value=f"{format_btc_balance(balance)} BTC",
+
+            # Display BTC balance
+            btc_balance_placeholder.metric(
+                label="BTC Balance",
+                value=f"{format_btc_balance(balances['btc'])} BTC",
                 help="Balance shown in BTC (fetched in satoshis)"
+            )
+
+            # Display USD balance
+            usd_balance_placeholder.metric(
+                label="USD Balance",
+                value=format_usd_balance(balances['usd']),
+                help="Balance shown in USD (fetched in cents)"
             )
         else:
             api_status.error("Failed to connect to Blink API")
