@@ -3,6 +3,8 @@ import time
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 import os
+from datetime import datetime
+import pandas as pd # Added pandas import
 
 # Configure page
 st.set_page_config(
@@ -91,6 +93,30 @@ if st.session_state.api_keys:
         }
     """)
 
+    # GraphQL query for recent transactions
+    transactions_query = gql("""
+        query Me {
+            me {
+                defaultAccount {
+                    transactions(first: 5) {
+                        edges {
+                            node {
+                                id
+                                status
+                                direction
+                                memo
+                                settlementAmount
+                                settlementFee
+                                settlementCurrency
+                                createdAt
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    """)
+
     def format_btc_balance(satoshis):
         """Convert satoshis to BTC with proper formatting"""
         btc_value = satoshis / 100000000  # Convert satoshis to BTC
@@ -100,6 +126,11 @@ if st.session_state.api_keys:
         """Convert cents to USD with proper formatting"""
         usd_value = cents / 100  # Convert cents to dollars
         return f"${usd_value:.2f}"  # Display with 2 decimal places and dollar sign
+
+    def format_date(date_str):
+        """Format date string to a readable format"""
+        date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        return date.strftime("%b %d, %Y %I:%M %p")
 
     def fetch_balance():
         """Fetch wallet balance from Blink API"""
@@ -133,6 +164,16 @@ if st.session_state.api_keys:
                 st.error(f"Error fetching balance: {error_msg}")
             return None
 
+    def fetch_transactions():
+        """Fetch recent transactions from Blink API"""
+        try:
+            result = client.execute(transactions_query)
+            transactions = result['me']['defaultAccount']['transactions']['edges']
+            return transactions
+        except Exception as e:
+            st.error(f"Error fetching transactions: {str(e)}")
+            return None
+
     # Add API status indicator
     st.sidebar.markdown("### API Status")
     api_status = st.sidebar.empty()
@@ -162,6 +203,44 @@ if st.session_state.api_keys:
                     value=format_usd_balance(balances['usd']),
                     help="Balance shown in USD (fetched in cents)"
                 )
+
+                # Fetch and display transactions
+                st.markdown("### Recent Transactions")
+                transactions = fetch_transactions()
+
+                if transactions and len(transactions) > 0:
+                    # Create a table for transactions
+                    transactions_data = []
+                    for tx in transactions:
+                        transaction = tx['node']
+                        amount = format_btc_balance(transaction['settlementAmount'])
+                        direction = transaction['direction'].capitalize()
+                        sign = '+' if direction == 'Receive' else '-'
+
+                        transactions_data.append({
+                            "Date": format_date(transaction['createdAt']),
+                            "Type": direction,
+                            "Amount": f"{sign}{amount} BTC",
+                            "Status": transaction['status'].capitalize(),
+                            "Memo": transaction['memo'] or '-'
+                        })
+
+                    # Display transactions using a dataframe with custom styling
+                    df = pd.DataFrame(transactions_data)
+                    st.dataframe(
+                        df,
+                        hide_index=True,
+                        column_config={
+                            "Date": st.column_config.TextColumn("Date", width="medium"),
+                            "Type": st.column_config.TextColumn("Type", width="small"),
+                            "Amount": st.column_config.TextColumn("Amount", width="medium"),
+                            "Status": st.column_config.TextColumn("Status", width="small"),
+                            "Memo": st.column_config.TextColumn("Memo", width="large"),
+                        }
+                    )
+                else:
+                    st.info("No recent transactions found")
+
             else:
                 api_status.error("Failed to connect to Blink API")
 
