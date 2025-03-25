@@ -112,7 +112,23 @@ if st.session_state.api_keys:
                                 settlementAmount
                                 settlementFee
                                 settlementCurrency
+                                settlementDisplayAmount
+                                settlementDisplayFee
+                                settlementDisplayCurrency
+                                settlementPrice {
+                                    base
+                                    offset
+                                    currencyUnit
+                                    formattedAmount
+                                }
+                                status
                                 createdAt
+                                initiationVia {
+                                    __typename
+                                }
+                                settlementVia {
+                                    __typename
+                                }
                             }
                         }
                     }
