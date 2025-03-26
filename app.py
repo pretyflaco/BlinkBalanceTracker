@@ -22,8 +22,22 @@ if 'api_keys' not in st.session_state:
 if 'selected_account' not in st.session_state:
     st.session_state.selected_account = None
 
+# Add after session state initializations (around line 23)
+if 'show_satoshis' not in st.session_state:
+    st.session_state.show_satoshis = True  # Default to satoshi format
+
 # Sidebar for account management
 st.sidebar.title("Account Management")
+
+# Add after the sidebar title (around line 26)
+st.sidebar.markdown("### Display Settings")
+show_satoshis = st.sidebar.toggle(
+    "Show amounts in satoshis",
+    value=st.session_state.show_satoshis,
+    help="Toggle between satoshis and BTC decimal format"
+)
+st.session_state.show_satoshis = show_satoshis
+
 
 # Add new API key
 with st.sidebar.form("add_account_form"):
@@ -158,10 +172,14 @@ if st.session_state.api_keys:
         }
     """)
 
+    # Replace the format_btc_balance function
     def format_btc_balance(satoshis):
-        """Convert satoshis to BTC with proper formatting"""
-        btc_value = satoshis / 100000000  # Convert satoshis to BTC
-        return f"{btc_value:.8f}"  # Display with 8 decimal places
+        """Convert satoshis to BTC with proper formatting based on display preference"""
+        if st.session_state.show_satoshis:
+            return f"{satoshis:,} sats"  # Format with commas for readability
+        else:
+            btc_value = satoshis / 100000000  # Convert satoshis to BTC
+            return f"{btc_value:.8f} BTC"
 
     def format_usd_balance(cents):
         """Convert cents to USD with proper formatting"""
@@ -183,11 +201,15 @@ if st.session_state.api_keys:
             # If date parsing fails, return original value
             return str(date_str)
 
+    # Update the format_amount function
     def format_amount(amount, currency):
-        """Format amount based on currency"""
+        """Format amount based on currency and display preference"""
         if currency == 'BTC':
-            value = amount / 100000000  # Convert satoshis to BTC
-            return f"{value:.8f} BTC"
+            if st.session_state.show_satoshis:
+                return f"{amount:,} sats"
+            else:
+                value = amount / 100000000  # Convert satoshis to BTC
+                return f"{value:.8f} BTC"
         elif currency == 'USD':
             value = amount / 100  # Convert cents to USD
             return f"${value:.2f}"
@@ -286,7 +308,7 @@ if st.session_state.api_keys:
                 # Display BTC balance
                 btc_balance_placeholder.metric(
                     label="BTC Balance",
-                    value=f"{format_btc_balance(balances['btc'])} BTC",
+                    value=f"{format_btc_balance(balances['btc'])}",
                     help="Balance shown in BTC (fetched in satoshis)"
                 )
 
