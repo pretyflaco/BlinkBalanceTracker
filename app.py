@@ -334,7 +334,7 @@ if st.session_state.api_keys:
                             "Month": month_year,
                             "Date": formatted_date,
                             "ID": transaction['id'],
-                            "Type": transaction['initiationVia']['__typename'],
+                            "Type": transaction['settlementVia']['__typename'].replace('SettlementVia', ''),
                             "Direction": direction,
                             "Amount": f"{sign}{formatted_amount}",
                             "Status": transaction['status'].capitalize(),
