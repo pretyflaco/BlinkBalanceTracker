@@ -106,6 +106,7 @@ if st.session_state.api_keys:
                         edges {
                             node {
                                 id
+                                txHash
                                 status
                                 direction
                                 memo
@@ -299,9 +300,12 @@ if st.session_state.api_keys:
                         transactions_data.append({
                             "Month": month_year,
                             "Date": formatted_date,
-                            "Type": direction,
+                            "ID": transaction['id'],
+                            "Type": transaction['initiationVia']['__typename'],
+                            "Direction": direction,
                             "Amount": f"{sign}{formatted_amount}",
                             "Status": transaction['status'].capitalize(),
+                            "Hash": transaction.get('txHash', '-'),
                             "Memo": transaction['memo'] or '-'
                         })
 
@@ -325,9 +329,12 @@ if st.session_state.api_keys:
                                 hide_index=True,
                                 column_config={
                                     "Date": st.column_config.TextColumn("Date", width="medium"),
-                                    "Type": st.column_config.TextColumn("Type", width="small"),
+                                    "ID": st.column_config.TextColumn("ID", width="medium"),
+                                    "Type": st.column_config.TextColumn("Type", width="medium"),
+                                    "Direction": st.column_config.TextColumn("Direction", width="small"),
                                     "Amount": st.column_config.TextColumn("Amount", width="medium"),
                                     "Status": st.column_config.TextColumn("Status", width="small"),
+                                    "Hash": st.column_config.TextColumn("Hash", width="large"),
                                     "Memo": st.column_config.TextColumn("Memo", width="large"),
                                 }
                             )
