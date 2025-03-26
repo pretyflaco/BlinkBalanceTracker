@@ -104,9 +104,9 @@ if st.session_state.api_keys:
                             hasNextPage
                         }
                         edges {
+                            cursor
                             node {
                                 id
-                                txHash
                                 status
                                 direction
                                 memo
@@ -122,13 +122,33 @@ if st.session_state.api_keys:
                                     currencyUnit
                                     formattedAmount
                                 }
-                                status
                                 createdAt
                                 initiationVia {
                                     __typename
+                                    ... on InitiationViaIntraLedger {
+                                        counterPartyWalletId
+                                        counterPartyUsername
+                                    }
+                                    ... on InitiationViaLn {
+                                        paymentHash
+                                    }
+                                    ... on InitiationViaOnChain {
+                                        address
+                                    }
                                 }
                                 settlementVia {
                                     __typename
+                                    ... on SettlementViaIntraLedger {
+                                        counterPartyWalletId
+                                        counterPartyUsername
+                                    }
+                                    ... on SettlementViaLn {
+                                        paymentSecret
+                                        preImage
+                                    }
+                                    ... on SettlementViaOnChain {
+                                        transactionHash
+                                    }
                                 }
                             }
                         }
@@ -172,6 +192,19 @@ if st.session_state.api_keys:
             value = amount / 100  # Convert cents to USD
             return f"${value:.2f}"
         return str(amount)
+
+    def get_transaction_hash(transaction):
+        """Extract transaction hash based on settlement type"""
+        settlement_via = transaction.get('settlementVia', {})
+        if settlement_via:
+            if settlement_via['__typename'] == 'SettlementViaOnChain':
+                return settlement_via.get('transactionHash', '-')
+            elif settlement_via['__typename'] == 'SettlementViaLn':
+                return settlement_via.get('paymentSecret', '-')
+            elif settlement_via['__typename'] == 'SettlementViaIntraLedger':
+                return f"Internal-{settlement_via.get('counterPartyWalletId', '-')}"
+        return '-'
+
 
     def fetch_balance():
         """Fetch wallet balance from Blink API"""
@@ -305,7 +338,7 @@ if st.session_state.api_keys:
                             "Direction": direction,
                             "Amount": f"{sign}{formatted_amount}",
                             "Status": transaction['status'].capitalize(),
-                            "Hash": transaction.get('txHash', '-'),
+                            "Hash": get_transaction_hash(transaction),
                             "Memo": transaction['memo'] or '-'
                         })
 
